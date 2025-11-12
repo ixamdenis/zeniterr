@@ -1,125 +1,75 @@
-import express from "express";
-import Usuario from "../models/Usuario.mjs";
-import { verificarToken, permitirRoles } from "../middleware/auth.mjs";
+// Archivo: backend/routes/adminRoutes.mjs
 
-console.log("✅ Rutas de administrador cargadas correctamente");
+import express from "express";
+import { auth, adminOnly } from "../middleware/auth.mjs";
 
 const router = express.Router();
 
-/* ===========================
-   🔹 Ver todos los usuarios (solo admin)
-=========================== */
-router.get("/usuarios", verificarToken, permitirRoles("admin"), async (req, res) => {
-  try {
-    const usuarios = await Usuario.find().select("-password");
-    res.json(usuarios);
-  } catch (err) {
-    console.error("❌ Error en /usuarios:", err);
-    res.status(500).json({ error: "Error al obtener usuarios.", detalle: err.message });
-  }
-});
+// Exportamos una función que recibe el Modelo Usuario
+export default (Usuario) => {
 
-/* ===========================
-   🔹 Aprobar vendedor (con fallback de edad)
-=========================== */
-router.patch("/aprobar-vendedor/:id", verificarToken, permitirRoles("admin"), async (req, res) => {
-  try {
-    console.log("🟡 Intentando aprobar vendedor con ID:", req.params.id);
+  // Middleware para autenticación
+  const authMiddleware = auth(Usuario);
 
-    const usuario = await Usuario.findById(req.params.id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
-    }
-
-    // Si el usuario no tiene edad, se asigna temporalmente 18
-    if (!usuario.edad) {
-      console.log("⚠️ Usuario sin edad — asignando edad mínima por defecto (18).");
-      usuario.edad = 18;
-    }
-
-    usuario.vendedorAprobado = true;
-    usuario.solicitudVendedor = false;
-    usuario.rol = "vendedor";
-    await usuario.save();
-
-    console.log("✅ Vendedor aprobado correctamente:", usuario.email);
-    res.json({ mensaje: "Vendedor aprobado correctamente.", edad: usuario.edad });
-  } catch (err) {
-    console.error("❌ Error en /aprobar-vendedor:", err);
-    res.status(500).json({
-      error: "Error al aprobar vendedor.",
-      detalle: err.message,
-      stack: err.stack
+  // 🤴 Ruta GET /admin/profile - Obtener perfil (solo requiere auth)
+  router.get("/profile", authMiddleware, (req, res) => {
+    // La información del usuario ya está en req.user
+    res.json({
+      id: req.user.id,
+      nombre: req.user.nombre,
+      email: req.user.email,
+      rol: req.user.rol,
+      isAdmin: req.isAdmin
     });
-  }
-});
+  });
 
-/* ===========================
-   🔹 Rechazar solicitud de vendedor
-=========================== */
-router.patch("/rechazar-vendedor/:id", verificarToken, permitirRoles("admin"), async (req, res) => {
-  try {
-    const usuario = await Usuario.findById(req.params.id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
+  // 👨‍👩‍👧‍👦 Ruta GET /admin/users - Obtener todos los usuarios (Requiere ser admin)
+  router.get("/users", authMiddleware, adminOnly, async (req, res) => {
+    try {
+      // Buscar todos los usuarios, excluyendo la contraseña
+      const users = await Usuario.findAll({
+        attributes: { exclude: ['password'] },
+        order: [['fechaRegistro', 'DESC']]
+      });
+      res.status(200).json(users);
+    } catch (error) {
+      console.error("Error al obtener usuarios:", error);
+      res.status(500).json({ msg: "Error al obtener la lista de usuarios." });
+    }
+  });
+
+  // 📝 Ruta PATCH /admin/user/:id/role - Actualizar rol de usuario (Requiere ser admin)
+  router.patch("/user/:id/role", authMiddleware, adminOnly, async (req, res) => {
+    const userId = req.params.id;
+    const { rol } = req.body;
+
+    // Validación básica de rol
+    if (!['admin', 'vendedor', 'comprador'].includes(rol)) {
+      return res.status(400).json({ msg: "Rol no válido." });
     }
 
-    usuario.vendedorAprobado = false;
-    usuario.solicitudVendedor = false;
-    usuario.rol = "comprador";
-    await usuario.save();
+    try {
+      // Actualizar el rol del usuario
+      const [updatedRows] = await Usuario.update({ rol }, {
+        where: { id: userId }
+      });
 
-    res.json({ mensaje: "Solicitud de vendedor rechazada." });
-  } catch (err) {
-    console.error("❌ Error en /rechazar-vendedor:", err);
-    res.status(500).json({ error: "Error al rechazar solicitud de vendedor.", detalle: err.message });
-  }
-});
+      if (updatedRows === 0) {
+        return res.status(404).json({ msg: "Usuario no encontrado." });
+      }
 
-/* ===========================
-   🔹 Cambiar rol de usuario
-=========================== */
-router.patch("/cambiar-rol/:id", verificarToken, permitirRoles("admin"), async (req, res) => {
-  try {
-    const { nuevoRol } = req.body;
-    const usuario = await Usuario.findById(req.params.id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
+      const updatedUser = await Usuario.findByPk(userId, { attributes: { exclude: ['password'] } });
+
+      res.status(200).json({
+        msg: `Rol del usuario ${userId} actualizado a ${rol}.`,
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Error al actualizar rol de usuario:", error);
+      res.status(500).json({ msg: "Error al actualizar el rol del usuario." });
     }
+  });
 
-    if (!usuario.edad) {
-      console.log("⚠️ Usuario sin edad — asignando edad mínima (18) antes de cambio de rol.");
-      usuario.edad = 18;
-    }
 
-    usuario.rol = nuevoRol;
-    await usuario.save();
-
-    res.json({ mensaje: `Rol cambiado a ${nuevoRol}.` });
-  } catch (err) {
-    console.error("❌ Error en /cambiar-rol:", err);
-    res.status(500).json({ error: "Error al cambiar el rol.", detalle: err.message });
-  }
-});
-
-/* ===========================
-   🔹 Activar o desactivar usuario
-=========================== */
-router.patch("/toggle-activo/:id", verificarToken, permitirRoles("admin"), async (req, res) => {
-  try {
-    const usuario = await Usuario.findById(req.params.id);
-    if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
-    }
-
-    usuario.activo = !usuario.activo;
-    await usuario.save();
-
-    res.json({ mensaje: `Usuario ${usuario.activo ? "activado" : "desactivado"} correctamente.` });
-  } catch (err) {
-    console.error("❌ Error en /toggle-activo:", err);
-    res.status(500).json({ error: "Error al modificar estado del usuario.", detalle: err.message });
-  }
-});
-
-export default router;
+  return router;
+};

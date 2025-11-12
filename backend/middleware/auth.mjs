@@ -1,41 +1,39 @@
+// Archivo: backend/middleware/auth.mjs
+
 import jwt from "jsonwebtoken";
-import Usuario from "../models/Usuario.mjs";
 
-// ✅ Verifica el token
-export const verificarToken = async (req, res, next) => {
+// Exportamos una función que recibe el Modelo Usuario
+export const auth = (Usuario) => async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      console.log("❌ No se envió Authorization header");
-      return res.status(401).json({ error: "Token no proporcionado." });
-    }
-
-    const token = authHeader.split(" ")[1];
+    const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("🔑 Token decodificado:", decoded);
 
-    const usuario = await Usuario.findById(decoded.id);
-    if (!usuario) {
-      console.log("❌ Usuario no encontrado para el token");
-      return res.status(404).json({ error: "Usuario no encontrado." });
+    // 🔎 Buscamos al usuario por su ID (Primary Key)
+    // Usamos decoded.id porque PostgreSQL usa IDs numéricos (INTEGER)
+    const user = await Usuario.findByPk(decoded.id);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado.");
     }
 
-    req.usuario = usuario;
-    console.log("✅ Usuario autenticado:", usuario.email, "| Rol:", usuario.rol);
+    req.token = token;
+    // Adjuntamos el objeto Sequelize del usuario a la request
+    req.user = user;
+
+    // Verificamos si es administrador (para rutas admin)
+    req.isAdmin = user.rol === "admin";
+
     next();
-  } catch (err) {
-    console.error("⚠️ Error en verificarToken:", err.message);
-    res.status(403).json({ error: "Token inválido o expirado." });
+  } catch (error) {
+    res.status(401).send({ error: "Por favor, autentíquese." });
   }
 };
 
-// ✅ Verifica si el usuario tiene el rol requerido
-export const permitirRoles = (...rolesPermitidos) => {
-  return (req, res, next) => {
-    console.log("🔒 Verificando rol:", req.usuario?.rol, "| Roles permitidos:", rolesPermitidos);
-    if (!rolesPermitidos.includes(req.usuario.rol)) {
-      return res.status(403).json({ error: "No tienes permiso para realizar esta acción." });
-    }
+// Middleware para restringir acceso solo a administradores
+export const adminOnly = (req, res, next) => {
+  if (req.isAdmin) {
     next();
-  };
+  } else {
+    res.status(403).send({ error: "Acceso denegado. Solo administradores." });
+  }
 };

@@ -1,102 +1,95 @@
+// Archivo: backend/routes/usuarioRoutes.mjs
+
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Usuario from "../models/Usuario.mjs";
-
-console.log("✅ Rutas de usuario cargadas correctamente");
 
 const router = express.Router();
 
-/* ===========================
-   🔹 Registro de usuario
-=========================== */
-router.post("/register", async (req, res) => {
-  try {
-    const { nombre, email, password, rol, edad } = req.body;
+// Exportamos una función que recibe el Modelo Usuario
+export default (Usuario) => {
 
-    // Validar datos obligatorios
-    if (!nombre || !email || !password || !edad) {
-      return res.status(400).json({ error: "Todos los campos son obligatorios (nombre, email, password, edad)." });
-    }
-
-    // Verificar edad mínima
-    if (edad < 18) {
-      return res.status(400).json({ error: "Debe ser mayor de edad para registrarse." });
-    }
-
-    // Verificar si el email ya existe
-    const usuarioExistente = await Usuario.findOne({ email });
-    if (usuarioExistente) {
-      return res.status(400).json({ error: "El email ya está registrado." });
-    }
-
-    // Encriptar la contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Crear nuevo usuario
-    const nuevoUsuario = new Usuario({
-      nombre,
-      email,
-      password: hashedPassword,
-      edad,
-      rol: rol || "comprador",
-      solicitudVendedor: rol === "vendedor" ? true : false
+  // Función para generar el token JWT
+  const generateAuthToken = (id) => {
+    return jwt.sign({ id: id.toString() }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
     });
+  };
 
-    await nuevoUsuario.save();
+  // 📝 Ruta de REGISTRO
+  router.post("/register", async (req, res) => {
+    const { nombre, email, password, edad } = req.body;
 
-    res.status(201).json({ mensaje: "Usuario creado con éxito.", usuario: { nombre, email, edad, rol: nuevoUsuario.rol } });
-  } catch (err) {
-    console.error("❌ Error en /register:", err);
-    res.status(500).json({ error: "Error al registrar usuario.", detalle: err.message });
-  }
-});
+    try {
+      // 1. Encriptar la contraseña
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
 
-/* ===========================
-   🔹 Inicio de sesión
-=========================== */
-router.post("/login", async (req, res) => {
-  try {
+      // 2. Crear el usuario con Sequelize
+      const newUser = await Usuario.create({
+        nombre,
+        email,
+        password: hashedPassword,
+        edad,
+        // rol, solicitudVendedor y activo usarán los valores por defecto
+      });
+
+      // 3. Generar token
+      const token = generateAuthToken(newUser.id);
+
+      // 4. Respuesta (Excluimos la contraseña en la respuesta)
+      res.status(201).json({
+        id: newUser.id,
+        nombre: newUser.nombre,
+        email: newUser.email,
+        rol: newUser.rol,
+        token: token,
+      });
+    } catch (error) {
+      console.error("Error en registro:", error);
+      // Manejar error de email duplicado (SequelizeUniqueConstraintError)
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({ msg: "El email ya está registrado." });
+      }
+      res.status(500).json({ msg: "Error en el servidor al registrar el usuario." });
+    }
+  });
+
+  // 🔑 Ruta de LOGIN
+  router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
-    const usuario = await Usuario.findOne({ email });
-    if (!usuario) {
-      return res.status(400).json({ error: "Usuario no encontrado." });
-    }
+    try {
+      // 1. Buscar usuario por email
+      const user = await Usuario.findOne({ where: { email } });
 
-    const passwordValida = await bcrypt.compare(password, usuario.password);
-    if (!passwordValida) {
-      return res.status(400).json({ error: "Contraseña incorrecta." });
-    }
-
-    // Generar token JWT
-    const token = jwt.sign(
-      { id: usuario._id, rol: usuario.rol },
-      process.env.JWT_SECRET,
-      { expiresIn: "2h" }
-    );
-
-    res.json({
-      mensaje: "Inicio de sesión exitoso.",
-      token,
-      usuario: {
-        id: usuario._id,
-        nombre: usuario.nombre,
-        rol: usuario.rol,
-        edad: usuario.edad
+      if (!user) {
+        return res.status(400).json({ msg: "Credenciales inválidas." });
       }
-    });
-  } catch (err) {
-    console.error("❌ Error en /login:", err);
-    res.status(500).json({ error: "Error al iniciar sesión.", detalle: err.message });
-  }
-});
 
-/* ===========================
-   🔹 Verificar sesión (opcional)
-=========================== */
-router.get("/perfil", async (req, res) => {
-  res.json({ mensaje: "Ruta de perfil funcional. (Pendiente de protección con token)" });
-});
+      // 2. Comparar contraseña encriptada
+      const isMatch = await bcrypt.compare(password, user.password);
 
-export default router;
+      if (!isMatch) {
+        return res.status(400).json({ msg: "Credenciales inválidas." });
+      }
+
+      // 3. Generar token
+      const token = generateAuthToken(user.id);
+
+      // 4. Respuesta
+      res.json({
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        token: token,
+      });
+    } catch (error) {
+      console.error("Error en login:", error);
+      res.status(500).json({ msg: "Error en el servidor." });
+    }
+  });
+
+  return router;
+};
