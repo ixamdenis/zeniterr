@@ -1,7 +1,9 @@
+// Archivo: frontend/src/components/GalleryCard.jsx (CÓDIGO 100% REEMPLAZADO)
 import React from "react";
 import { Star } from "lucide-react";
 
-const GalleryCard = ({ galeria }) => {
+// El componente ahora espera una función onPreviewClick
+const GalleryCard = ({ galeria, onPreviewClick }) => {
     // rating temporal (1 a 5)
     const rating = galeria.rating || Math.floor(Math.random() * 5) + 1;
 
@@ -20,8 +22,19 @@ const GalleryCard = ({ galeria }) => {
         );
     };
 
+    const handlePreviewClick = (e) => {
+        e.stopPropagation(); // Previene que el clic se propague al contenedor si lo tuviera
+        if (onPreviewClick) {
+            onPreviewClick(galeria);
+        }
+    }
+
     return (
-        <div className="bg-neutral-900 border border-neutral-700 rounded-2xl overflow-hidden hover:scale-[1.02] transition-all cursor-pointer shadow-md hover:shadow-yellow-400/20">
+        <div
+            className="bg-neutral-900 border border-neutral-700 rounded-2xl overflow-hidden hover:scale-[1.02] transition-all cursor-pointer shadow-md hover:shadow-yellow-400/20"
+            // Se puede hacer clic en toda la tarjeta para la vista previa
+            onClick={handlePreviewClick}
+        >
             <img
                 src={galeria.imagen || galeria.imagenes?.[0] || ""}
                 alt={galeria.titulo}
@@ -38,7 +51,11 @@ const GalleryCard = ({ galeria }) => {
                     {renderStars(rating)}
                 </div>
                 <div className="flex justify-between mt-3">
-                    <button className="bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-semibold px-3 py-1.5 rounded-lg">
+                    {/* El botón explícitamente llama al manejador de click */}
+                    <button
+                        className="bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-semibold px-3 py-1.5 rounded-lg"
+                        onClick={handlePreviewClick}
+                    >
                         Previsualizar
                     </button>
                     <button className="bg-neutral-800 hover:bg-neutral-700 text-yellow-400 border border-yellow-500 text-sm px-3 py-1.5 rounded-lg">

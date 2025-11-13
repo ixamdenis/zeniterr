@@ -1,9 +1,12 @@
+// Archivo: backend/index.mjs (CÓDIGO 100% FINAL)
 import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
 import cors from "cors";
 import { Sequelize } from "sequelize";
+import path from "path";
+import { fileURLToPath } from 'url';
 
 // 🧩 Importamos rutas, modelos y la función de inicialización
 import { defineModels } from "./models/index.mjs";
@@ -25,6 +28,12 @@ app.use(
 
 app.use(express.json());
 
+// 🆕 Configuración para servir archivos estáticos (imágenes) desde backend/public
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/public", express.static(path.join(__dirname, 'public')));
+
+
 // 🔗 Inicialización de Sequelize y Modelos
 const DB_URI = process.env.POSTGRES_URI;
 
@@ -41,9 +50,7 @@ const sequelize = new Sequelize(DB_URI, {
 const { Usuario, Galeria } = defineModels(sequelize);
 
 // 🤝 Establecer relaciones de los modelos
-// Un Usuario (creador) tiene muchas Galerias
 Usuario.hasMany(Galeria, { foreignKey: 'creadorId', as: 'obras' });
-// Una Galeria pertenece a un Usuario (creador)
 Galeria.belongsTo(Usuario, { foreignKey: 'creadorId', as: 'creador' });
 
 
@@ -61,11 +68,10 @@ async function connectDB() {
     await sequelize.authenticate();
     console.log("PostgreSQL conectado y autenticado.");
 
-    // Sincroniza (crea o actualiza tablas)
     await sequelize.sync({ alter: true });
     console.log("Modelos de base de datos sincronizados.");
 
-    // 🆕 Inicializa datos de prueba (solo si no existe un admin)
+    // Inicializa datos de prueba (solo si no existe un admin)
     await initializeData(Usuario, Galeria);
 
     // 🚀 Iniciar servidor

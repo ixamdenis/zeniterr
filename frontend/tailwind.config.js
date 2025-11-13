@@ -1,4 +1,7 @@
+// Archivo: frontend/tailwind.config.js (CÓDIGO 100% REEMPLAZADO)
 /** @type {import('tailwindcss').Config} */
+import defaultTheme from 'tailwindcss/defaultTheme';
+
 export default {
   content: [
     "./index.html",
@@ -6,16 +9,11 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          orange: "#FF570A",
-          yellow: "#EEC170",
-          black: "#0B0500",
-          terracotta: "#885053",
-        },
-      },
       fontFamily: {
-        sans: ["'Poppins'", "sans-serif"],
+        // Tipografía para Títulos/Acentos (Playfair Display)
+        serif: ['Playfair Display', ...defaultTheme.fontFamily.serif],
+        // Tipografía para Cuerpo/General (Raleway)
+        sans: ['Raleway', ...defaultTheme.fontFamily.sans],
       },
     },
   },

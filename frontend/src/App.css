@@ -1,3 +1,21 @@
+/* Archivo: frontend/src/App.css (CÓDIGO 100% REEMPLAZADO) */
+
+/* Contenedor principal de la aplicación, aplica la tipografía base (Raleway) y el fondo oscuro */
+.app-container {
+  @apply min-h-screen font-sans bg-neutral-900;
+}
+
+/* Aplicamos Playfair Display (font-serif) a los títulos */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-serif;
+}
+
+/* Estilos de Vite preexistentes, mantenidos por si se usan */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -11,9 +29,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +42,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

@@ -1,3 +1,4 @@
+// Archivo: frontend/src/pages/Home.jsx (CÓDIGO 100% REEMPLAZADO)
 import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -37,6 +38,14 @@ const Home = () => {
         </div>
     );
 
+    // Función para abrir el modal, usada en varios puntos
+    const handleOpenModal = (galeria, e) => {
+        if (e) {
+            e.stopPropagation(); // Evita que se active el evento del contenedor padre
+        }
+        setGaleriaSeleccionada(galeria);
+    }
+
     return (
         <div className="p-6 text-white bg-neutral-900 min-h-screen">
             <style>{swiperStyles}</style>
@@ -56,10 +65,10 @@ const Home = () => {
 
 
                         {galerias.slice(0, 4).map((galeria) => (
-                            <SwiperSlide key={galeria._id}>
+                            <SwiperSlide key={galeria.id}> {/* CORREGIDO: Usar .id */}
                                 <div
                                     className="relative cursor-pointer"
-                                    onClick={() => setGaleriaSeleccionada(galeria)}
+                                    onClick={() => handleOpenModal(galeria)}
                                 >
                                     <div className="relative w-full h-[550px] bg-neutral-800 flex items-center justify-center">
                                         {galeria.imagenes && galeria.imagenes[0] ? (
@@ -86,7 +95,10 @@ const Home = () => {
                                             {galeria.descripcion}
                                         </p>
                                         <div className="flex items-center gap-3">
-                                            <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-4 py-2 rounded-xl transition">
+                                            <button
+                                                className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-4 py-2 rounded-xl transition"
+                                                onClick={(e) => handleOpenModal(galeria, e)}
+                                            >
                                                 Previsualizar
                                             </button>
                                             <button className="bg-neutral-800 hover:bg-neutral-700 text-yellow-400 border border-yellow-500 px-4 py-2 rounded-xl transition">
@@ -112,8 +124,8 @@ const Home = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {galerias.map((galeria) => (
                         <div
-                            key={galeria._id}
-                            onClick={() => setGaleriaSeleccionada(galeria)}
+                            key={galeria.id} // CORREGIDO: Usar .id
+                            onClick={() => handleOpenModal(galeria)}
                             className="bg-neutral-900 border border-neutral-700 rounded-2xl overflow-hidden hover:scale-[1.02] transition-all cursor-pointer shadow-md hover:shadow-yellow-400/20"
                         >
                             <div className="relative w-full h-56 bg-neutral-800 flex items-center justify-center">
@@ -142,7 +154,10 @@ const Home = () => {
                                 </p>
                                 {renderStars(galeria.rating)}
                                 <div className="flex justify-between mt-3">
-                                    <button className="bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-semibold px-3 py-1.5 rounded-lg">
+                                    <button
+                                        className="bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-semibold px-3 py-1.5 rounded-lg"
+                                        onClick={(e) => handleOpenModal(galeria, e)}
+                                    >
                                         Previsualizar
                                     </button>
                                     <button className="bg-neutral-800 hover:bg-neutral-700 text-yellow-400 border border-yellow-500 text-sm px-3 py-1.5 rounded-lg">
@@ -158,7 +173,7 @@ const Home = () => {
             {/* ===== MODAL ===== */}
             {galeriaSeleccionada && (
                 <GalleryModal
-                    galeria={galeriaSeleccionada}
+                    gallery={galeriaSeleccionada}
                     onClose={() => setGaleriaSeleccionada(null)}
                 />
             )}

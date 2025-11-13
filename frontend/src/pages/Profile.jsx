@@ -51,7 +51,7 @@ const Profile = () => {
                             {creador.nombre || "Artista sin nombre"}
                         </h1>
                         <p className="text-gray-400">
-                            {creador.descripcion || "Artista de la comunidad Zenit"}
+                            {creador.descripcion || "Modelo Pampita"}
                         </p>
                     </div>
                 </div>

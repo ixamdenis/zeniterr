@@ -12,13 +12,13 @@ export default function Navbar({ onMenuClick }) {
             </button>
 
             <h1 className="text-xl font-semibold tracking-wide text-brand-yellow">
-                Galería App
+                Visual Pleasures
             </h1>
 
             <div className="flex items-center gap-3">
                 <span className="text-brand-yellow hidden sm:block">Usuario</span>
                 <img
-                    src="https://via.placeholder.com/32"
+                    src="https://images.pexels.com/photos/1839963/pexels-photo-1839963.jpeg"
                     alt="Avatar"
                     className="rounded-full w-8 h-8 ring-2 ring-brand-orange"
                 />
